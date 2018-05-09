@@ -1,41 +1,38 @@
 import React from 'react';
-import { StyleSheet, Text, View, Header, Button, TextInput } from 'react-native';
-
-
+import { StyleSheet, Text, View, Button, TextInput, FlatList } from 'react-native';
+import {itens} from './itens.js'
 
 export default class App extends React.Component {
   render() {
     return (
       <View style={styles.container}>
-        <ListView />
+        <ListView itens = {itens}/>
       </View>
     );
   }
 }
 
-class ListView extends React.Component {
-    render() {
+export class ListView extends React.Component {
+    render(props) {
         return (
             <View style={styles.container}>
-                <Header
-                    centerComponent={{ text: 'Listinha', style: { color: '#fff' } }}
-                />
+                <View style={styles.inputContainer}>
+                    <TextInput
+                        style={{height: 40, borderColor: 'gray', borderWidth: 1}}
+                        onChangeText={(text) => this.setState({text})}
+                        value='Título do novo item'
+                    />
 
-                <TextInput
-                    style={{height: 40, borderColor: 'gray', borderWidth: 1}}
-                    onChangeText={(text) => this.setState({text})}
-                    value='Título do novo item'
-                />
-                <Button
-                    onPress={onPressAddItem}
-                    title="Adicionar"
-                    color="#841584"
-                    accessibilityLabel="Adicionar"
-                />
+                    <Button
+                        title="Adicionar"
+                        color="#000088"
+                        accessibilityLabel="Adicionar"
+                    />
+                </View>
 
                 <FlatList
-                    data={/*array de items*/}
-                    renderItem={({item}) => item}
+                    data={this.props.itens}
+                    renderItem={({item}) => <ListElement item={item}/>}
                 />
             </View>
         );
@@ -45,12 +42,11 @@ class ListView extends React.Component {
 class ListElement extends React.Component {
     render() {
         return (
-            <View style={styles.container}>
-                <Text>Título do item</Text>
+            <View style={styles.itemContainer}>
+                <Text>{this.props.item}</Text>
                 <Button
-                    onPress={onPressDeleteItem}
                     title="Deletar"
-                    color="#841584"
+                    color="#880000"
                     accessibilityLabel="Deletar"
                 />
             </View>
@@ -61,10 +57,20 @@ class ListElement extends React.Component {
 
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+    container: {
+        backgroundColor: '#fff',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    inputContainer: {
+        flexWrap: 'wrap',
+        alignItems: 'flex-start',
+        flexDirection:'row',
+    },
+    itemContainer: {
+        flexWrap: 'wrap',
+        alignItems: 'flex-start',
+        flexDirection:'row',
+    }
 });
+
