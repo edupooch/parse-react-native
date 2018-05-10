@@ -1,7 +1,6 @@
 import React from 'react';
 import {StyleSheet, Text, View, Button, TextInput, FlatList, TouchableOpacity} from 'react-native';
 import {MaterialIcons} from "@expo/vector-icons";
-
 import Parse from 'parse/react-native'
 import {AsyncStorage} from 'react-native';
 
@@ -9,19 +8,18 @@ export default class App extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      itens: itens,
+      itens: [],
       nomeItem: ''
     };
     this.iniciaParse();
     this.iniciaLista();
   }
 
-// PARSE //////////////////////////////
+  // PARSE //////////////////////////////
   iniciaParse = () => {
     Parse.setAsyncStorage(AsyncStorage);
     Parse.serverURL = 'http://192.168.0.9:1337/parse/';
     Parse.initialize("testeLivros", "123456");
-
   };
 
   iniciaLista = () => {
@@ -30,16 +28,16 @@ export default class App extends React.Component {
     query.limit(3000);
     query.notEqualTo("nome", "bb");
     query.find({
-      success: (results) => {
+      success: results => {
         console.log("Successfully retrieved " + results.length + " itens.");
         this.setState({itens: results});
       },
-      error: function (error) {
+      error: error => {
         alert("Error: " + error.code + " " + error.message);
       }
     });
-    this.registraLiveQuery(query);
 
+    this.registraLiveQuery(query);
   };
 
   registraLiveQuery = query => {
@@ -76,7 +74,7 @@ export default class App extends React.Component {
 
   //CONTROLE ////////////////////////////
   _adicionaItem = () => {
-    this.setState({nomeItem: ""})
+    this.setState({nomeItem: ""});
 
     let item = new Item();
     item.save({nome: this.state.nomeItem},
@@ -128,33 +126,28 @@ export default class App extends React.Component {
           data={this.state.itens}
           extraData={this.state}
           renderItem={({item}) => <ListElement item={item} deletaItem={this._deletaItem}/>}
-          keyExtractor={(item) => (item.id)}
-        />
+          keyExtractor={(item) => (item.id)}/>
 
       </View>
     );
   }
 }
 
-class ListElement extends React.Component {
-  render() {
-    return (
-      <View style={styles.horizontal}>
-        <View style={styles.itemContainer}>
-          <Text>{this.props.item.get("nome")}</Text>
-          <TouchableOpacity onPress={() => this.props.deletaItem(this.props.item)}>
+const ListElement = props => (
+    <View style={styles.itemContainer}>
 
-            <MaterialIcons
-              name={'delete'}
-              size={25}
-              color={'#ae261f'}/>
+      <Text>{props.item.get("nome")}</Text>
 
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
-}
+      <TouchableOpacity onPress={() => props.deletaItem(props.item)}>
+
+        <MaterialIcons
+          name={'delete'}
+          size={25}
+          color={'#ae261f'}/>
+
+      </TouchableOpacity>
+    </View>
+);
 
 class Item extends Parse.Object {
   constructor() {
@@ -182,9 +175,6 @@ const styles = StyleSheet.create({
     flex: 1
   },
 
-  horizontal: {
-    flexDirection: 'row'
-  },
 
   itemContainer: {
     flex: 1,
