@@ -1,15 +1,19 @@
 import React from 'react';
 import {StyleSheet, Text, View, Button, TextInput, FlatList, TouchableOpacity} from 'react-native';
 import {MaterialIcons} from "@expo/vector-icons";
+import {DocumentPicker, FileSystem} from 'expo';
 import Parse from 'parse/react-native'
 import {AsyncStorage} from 'react-native';
+import {Base64} from 'js-base64';
+
 
 export default class App extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
       itens: [],
-      nomeItem: ''
+      nomeItem: '',
+      arquivoBase64: undefined
     };
     this.iniciaParse();
     this.iniciaLista();
@@ -33,7 +37,6 @@ export default class App extends React.Component {
         alert("Error: " + error.code + " " + error.message);
       }
     });
-
     this.registraLiveQuery(query);
   };
 
@@ -50,15 +53,15 @@ export default class App extends React.Component {
     });
   };
 
-  adicionaItemParse = (nomeItem) => {
+  adicionaItemParse = (nomeItem, arquivoBase64) => {
     let item = new Item();
-    item.save({nome: nomeItem},
+    item.save({nome: nomeItem, arquivo: arquivoBase64},
       {
         success: item => {
           console.log(item.id + " adicionado")
         },
 
-        error: (gameScore, error) => {
+        error: (item, error) => {
           alert('Failed to create new object, with error code: ' + error.message);
         }
       });
@@ -80,6 +83,7 @@ export default class App extends React.Component {
     let itens = this.state.itens;
     itens.push(object);
     this.setState({itens: itens})
+    console.log(object)
   };
 
   atualizaObjetoLocal = object => {
@@ -95,14 +99,42 @@ export default class App extends React.Component {
     });
   };
 
+  criaArquivoLocal = async documentPicked => {
+    await fetch(documentPicked.uri)
+      .then(res => res.blob()) // Gets the response and returns it as a blob
+        .then(blob => {
+          console.log(documentPicked);
+          var reader = new FileReader();
+          reader.readAsDataURL(blob);
+          reader.onload = () => {
+             this.setState({arquivoBase64: new Parse.File(documentPicked.name, {base64: reader.result} )})
+          };
+          reader.onerror = (error) => {
+              throw new Error("There was an error reading the file "+error);
+          };
+    });
+  }
+
+
   _onClickAdicionar = () => {
-    this.adicionaItemParse(this.state.nomeItem);
-    this.setState({nomeItem: ""});
+    this.adicionaItemParse(this.state.nomeItem, this.state.arquivoBase64);
+    this.setState({nomeItem: "", arquivoBase64: undefined});
   };
 
   _onClickDeletar = (item) => {
     this.deletaItemParse(item);
   };
+
+  _onClickPickDocument = async () => {
+	    let documentPicked = await DocumentPicker.getDocumentAsync();
+      if(documentPicked.type === "success"){
+          console.log("User selected the file in " + documentPicked.uri);
+          console.log(documentPicked);
+          this.criaArquivoLocal(documentPicked);
+      }else if(documentPicked.type === "failed"){
+          console.log("User cancelled the file picking");
+      }
+	}
 
   // VIEW ///////////////////////////////
   render() {
@@ -110,11 +142,23 @@ export default class App extends React.Component {
       <View style={styles.container}>
         <View style={styles.inputContainer}>
 
+          <TouchableOpacity
+             onPress={this._onClickPickDocument}
+             style={styles.btContainer}>
+
+            <MaterialIcons
+              name={'image'}
+              size={35}
+              color={this.state.arquivoBase64 ? '#367ec1' :'#dddddd'}/>
+
+          </TouchableOpacity>
+
           <TextInput
             style={styles.textInputStyle}
             onChangeText={(text) => this.setState({nomeItem: text})}
             placeholder='Título do novo item'
             value={this.state.nomeItem}/>
+
 
           <Button
             title="Adicionar"
@@ -176,6 +220,9 @@ const styles = StyleSheet.create({
     flex: 1
   },
 
+  btContainer:{
+    paddingRight: 5,
+  },
 
   itemContainer: {
     flex: 1,
@@ -190,5 +237,3 @@ const styles = StyleSheet.create({
   },
 
 });
-
-
