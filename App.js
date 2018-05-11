@@ -1,11 +1,9 @@
 import React from 'react';
-import {StyleSheet, Text, View, Button, TextInput, FlatList, TouchableOpacity} from 'react-native';
+import {StyleSheet, Text, View, Button, TextInput, FlatList, TouchableOpacity, Image} from 'react-native';
 import {MaterialIcons} from "@expo/vector-icons";
 import {DocumentPicker, FileSystem} from 'expo';
 import Parse from 'parse/react-native'
 import {AsyncStorage} from 'react-native';
-import {Base64} from 'js-base64';
-
 
 export default class App extends React.Component {
   constructor(props) {
@@ -83,7 +81,6 @@ export default class App extends React.Component {
     let itens = this.state.itens;
     itens.push(object);
     this.setState({itens: itens})
-    console.log(object)
   };
 
   atualizaObjetoLocal = object => {
@@ -102,18 +99,17 @@ export default class App extends React.Component {
   criaArquivoLocal = async documentPicked => {
     await fetch(documentPicked.uri)
       .then(res => res.blob()) // Gets the response and returns it as a blob
-        .then(blob => {
-          console.log(documentPicked);
-          var reader = new FileReader();
-          reader.readAsDataURL(blob);
-          reader.onload = () => {
-             this.setState({arquivoBase64: new Parse.File(documentPicked.name, {base64: reader.result} )})
-          };
-          reader.onerror = (error) => {
-              throw new Error("There was an error reading the file "+error);
-          };
-    });
-  }
+      .then(blob => {
+        let reader = new FileReader();
+        reader.readAsDataURL(blob);
+        reader.onload = () => {
+          this.setState({arquivoBase64: new Parse.File("arquivo", {base64: reader.result})})
+        };
+        reader.onerror = (error) => {
+          throw new Error("There was an error reading the file " + error);
+        };
+      });
+  };
 
 
   _onClickAdicionar = () => {
@@ -126,15 +122,14 @@ export default class App extends React.Component {
   };
 
   _onClickPickDocument = async () => {
-	    let documentPicked = await DocumentPicker.getDocumentAsync();
-      if(documentPicked.type === "success"){
-          console.log("User selected the file in " + documentPicked.uri);
-          console.log(documentPicked);
-          this.criaArquivoLocal(documentPicked);
-      }else if(documentPicked.type === "failed"){
-          console.log("User cancelled the file picking");
-      }
-	}
+    let documentPicked = await DocumentPicker.getDocumentAsync();
+    if (documentPicked.type === "success") {
+      console.log("User selected the file in " + documentPicked.uri);
+      this.criaArquivoLocal(documentPicked);
+    } else if (documentPicked.type === "failed") {
+      console.log("User cancelled the file picking");
+    }
+  };
 
   // VIEW ///////////////////////////////
   render() {
@@ -143,13 +138,13 @@ export default class App extends React.Component {
         <View style={styles.inputContainer}>
 
           <TouchableOpacity
-             onPress={this._onClickPickDocument}
-             style={styles.btContainer}>
+            onPress={this._onClickPickDocument}
+            style={styles.btContainer}>
 
             <MaterialIcons
               name={'image'}
               size={35}
-              color={this.state.arquivoBase64 ? '#367ec1' :'#dddddd'}/>
+              color={this.state.arquivoBase64 ? '#367ec1' : '#dddddd'}/>
 
           </TouchableOpacity>
 
@@ -159,13 +154,12 @@ export default class App extends React.Component {
             placeholder='Título do novo item'
             value={this.state.nomeItem}/>
 
-
           <Button
             title="Adicionar"
             onPress={this._onClickAdicionar}/>
         </View>
 
-        <Text style={{alignSelf: "center"}}>
+        <Text style={styles.textoItem}>
           {this.state.itens.length} itens
         </Text>
 
@@ -182,7 +176,12 @@ export default class App extends React.Component {
 const ListElement = props => (
   <View style={styles.itemContainer}>
 
-    <Text>{props.item.get("nome")}</Text>
+    <Image
+      style={styles.imagemItem}
+      source={{uri: props.item.get("arquivo").url()}}/>
+
+    <Text style={{flex: 1}}>{props.item.get("nome")}</Text>
+
     <TouchableOpacity onPress={() => props.deletaItem(props.item)}>
 
       <MaterialIcons
@@ -220,7 +219,7 @@ const styles = StyleSheet.create({
     flex: 1
   },
 
-  btContainer:{
+  btContainer: {
     paddingRight: 5,
   },
 
@@ -231,9 +230,18 @@ const styles = StyleSheet.create({
     paddingLeft: 10,
     alignItems: 'center',
     flexDirection: 'row',
-    justifyContent: 'space-between',
     borderBottomWidth: 1,
     borderBottomColor: '#ddd',
   },
+
+  textoItem: {
+    alignSelf: "center"
+  },
+
+  imagemItem: {
+    marginRight: 10,
+    width: 35,
+    height: 40
+  }
 
 });
