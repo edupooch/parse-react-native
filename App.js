@@ -23,10 +23,7 @@ export default class App extends React.Component {
   };
 
   iniciaLista = () => {
-    const Item = Parse.Object.extend("Item");
     const query = new Parse.Query(Item);
-    query.limit(3000);
-    query.notEqualTo("nome", "bb");
     query.find({
       success: results => {
         console.log("Successfully retrieved " + results.length + " itens.");
@@ -43,41 +40,19 @@ export default class App extends React.Component {
   registraLiveQuery = query => {
     let subscription = query.subscribe();
     subscription.on('create', (object) => {
-      this.criaObjeto(object);
+      this.criaObjetoLocal(object);
     });
     subscription.on('update', (object) => {
-      this.atualizaObjeto(object)
+      this.atualizaObjetoLocal(object)
     });
     subscription.on('delete', (object) => {
-      this.deletaObjeto(object)
+      this.deletaObjetoLocal(object)
     });
   };
 
-  criaObjeto = object => {
-    let itens = this.state.itens;
-    itens.push(object);
-    this.setState({itens: itens})
-  };
-
-  atualizaObjeto = object => {
-    let itens = this.state.itens;
-    const index = itens.indexOf(itens.find(item => item.id === object.id));
-    itens[index] = object;
-    this.setState({itens: itens});
-  };
-
-  deletaObjeto = object => {
-    this.setState({
-      itens: this.state.itens.filter(item => item.id !== object.id)
-    });
-  };
-
-  //CONTROLE ////////////////////////////
-  _adicionaItem = () => {
-    this.setState({nomeItem: ""});
-
+  adicionaItemParse = (nomeItem) => {
     let item = new Item();
-    item.save({nome: this.state.nomeItem},
+    item.save({nome: nomeItem},
       {
         success: item => {
           console.log(item.id + " adicionado")
@@ -89,16 +64,44 @@ export default class App extends React.Component {
       });
   };
 
-  _deletaItem = (item) => {
+  deletaItemParse = (item) => {
     item.destroy({
       success: myObject => {
         console.log("Objeto deletado: " + myObject.id);
-        this.deletaObjeto(myObject);
+        this.deletaObjetoLocal(myObject);
       },
       error: function (myObject, error) {
         console.log("Falha ao deletar objeto. Erro: " + error)
       }
     });
+  };
+
+  criaObjetoLocal = object => {
+    let itens = this.state.itens;
+    itens.push(object);
+    this.setState({itens: itens})
+  };
+
+  atualizaObjetoLocal = object => {
+    let itens = this.state.itens;
+    const index = itens.indexOf(itens.find(item => item.id === object.id));
+    itens[index] = object;
+    this.setState({itens: itens});
+  };
+
+  deletaObjetoLocal = object => {
+    this.setState({
+      itens: this.state.itens.filter(item => item.id !== object.id)
+    });
+  };
+
+  _onClickAdicionar = () => {
+    this.adicionaItemParse(this.state.nomeItem);
+    this.setState({nomeItem: ""});
+  };
+
+  _onClickDeletar = (item) => {
+    this.deletaItemParse(item);
   };
 
   // VIEW ///////////////////////////////
@@ -115,7 +118,7 @@ export default class App extends React.Component {
 
           <Button
             title="Adicionar"
-            onPress={this._adicionaItem}/>
+            onPress={this._onClickAdicionar}/>
         </View>
 
         <Text style={{alignSelf: "center"}}>
@@ -125,28 +128,26 @@ export default class App extends React.Component {
         <FlatList
           data={this.state.itens}
           extraData={this.state}
-          renderItem={({item}) => <ListElement item={item} deletaItem={this._deletaItem}/>}
+          renderItem={({item}) => <ListElement item={item} deletaItem={this._onClickDeletar}/>}
           keyExtractor={(item) => (item.id)}/>
-
       </View>
     );
   }
 }
 
 const ListElement = props => (
-    <View style={styles.itemContainer}>
+  <View style={styles.itemContainer}>
 
-      <Text>{props.item.get("nome")}</Text>
+    <Text>{props.item.get("nome")}</Text>
+    <TouchableOpacity onPress={() => props.deletaItem(props.item)}>
 
-      <TouchableOpacity onPress={() => props.deletaItem(props.item)}>
+      <MaterialIcons
+        name={'delete'}
+        size={25}
+        color={'#ae261f'}/>
 
-        <MaterialIcons
-          name={'delete'}
-          size={25}
-          color={'#ae261f'}/>
-
-      </TouchableOpacity>
-    </View>
+    </TouchableOpacity>
+  </View>
 );
 
 class Item extends Parse.Object {
