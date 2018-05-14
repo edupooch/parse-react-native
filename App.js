@@ -1,31 +1,36 @@
 import React from 'react';
 import {StyleSheet, Text, View, Button, TextInput, FlatList, TouchableOpacity, Image} from 'react-native';
 import {MaterialIcons} from "@expo/vector-icons";
-import {DocumentPicker, FileSystem} from 'expo';
+import {DocumentPicker} from 'expo';
 import Parse from 'parse/react-native'
 import {AsyncStorage} from 'react-native';
+
+const SERVER_URL = 'http://192.168.0.9:1337/parse/';
+const APP_ID = 'testeLivros';
+const MASTER_KEY = '123456';
 
 export default class App extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
       itens: [],
-      nomeItem: '',
-      arquivoBase64: undefined
+      itemName: '',
+      fileBase64: undefined
     };
-    this.iniciaParse();
-    this.iniciaLista();
+    this.initializeParse();
+    this.initializeList();
   }
 
   // PARSE //////////////////////////////
-  iniciaParse = () => {
+  initializeParse = () => {
     Parse.setAsyncStorage(AsyncStorage);
-    Parse.serverURL = 'http://192.168.0.9:1337/parse/';
-    Parse.initialize("testeLivros", "123456");
+    Parse.serverURL = SERVER_URL;
+    Parse.initialize(APP_ID, MASTER_KEY);
   };
 
-  iniciaLista = () => {
+  initializeList = () => {
     const query = new Parse.Query(Item);
+
     query.find({
       success: results => {
         console.log("Successfully retrieved " + results.length + " itens.");
@@ -35,41 +40,40 @@ export default class App extends React.Component {
         alert("Error: " + error.code + " " + error.message);
       }
     });
-    this.registraLiveQuery(query);
+    this.registerLiveQuery(query);
   };
 
-  registraLiveQuery = query => {
+  registerLiveQuery = query => {
     let subscription = query.subscribe();
     subscription.on('create', (object) => {
-      this.criaObjetoLocal(object);
+      this.addItemOnState(object);
     });
     subscription.on('update', (object) => {
-      this.atualizaObjetoLocal(object)
+      this.updateItemOnState(object)
     });
     subscription.on('delete', (object) => {
-      this.deletaObjetoLocal(object)
+      this.deleteItemOnState(object)
     });
   };
 
-  adicionaItemParse = (nomeItem, arquivoBase64) => {
+  addItemParse = (itemName, fileBase64) => {
     let item = new Item();
-    item.save({nome: nomeItem, arquivo: arquivoBase64},
+    item.save({nome: itemName, arquivo: fileBase64},
       {
         success: item => {
-          console.log(item.id + " adicionado")
+          console.log(item.id + " added")
         },
-
         error: (item, error) => {
           alert('Failed to create new object, with error code: ' + error.message);
         }
       });
   };
 
-  deletaItemParse = (item) => {
+  deleteItemParse = (item) => {
     item.destroy({
       success: myObject => {
         console.log("Objeto deletado: " + myObject.id);
-        this.deletaObjetoLocal(myObject);
+        this.deleteItemOnState(myObject);
       },
       error: function (myObject, error) {
         console.log("Falha ao deletar objeto. Erro: " + error)
@@ -77,33 +81,33 @@ export default class App extends React.Component {
     });
   };
 
-  criaObjetoLocal = object => {
+  addItemOnState = object => {
     let itens = this.state.itens;
     itens.push(object);
     this.setState({itens: itens})
   };
 
-  atualizaObjetoLocal = object => {
+  updateItemOnState = object => {
     let itens = this.state.itens;
     const index = itens.indexOf(itens.find(item => item.id === object.id));
     itens[index] = object;
     this.setState({itens: itens});
   };
 
-  deletaObjetoLocal = object => {
+  deleteItemOnState = object => {
     this.setState({
       itens: this.state.itens.filter(item => item.id !== object.id)
     });
   };
 
-  criaArquivoLocal = async documentPicked => {
-    await fetch(documentPicked.uri)
-      .then(res => res.blob()) // Gets the response and returns it as a blob
+  addFileBase64ToState = async filePicked => {
+    await fetch(filePicked.uri)
+      .then(res => res.blob())
       .then(blob => {
         let reader = new FileReader();
         reader.readAsDataURL(blob);
         reader.onload = () => {
-          this.setState({arquivoBase64: new Parse.File("arquivo", {base64: reader.result})})
+          this.setState({fileBase64: new Parse.File("filename", {base64: reader.result})})
         };
         reader.onerror = (error) => {
           throw new Error("There was an error reading the file " + error);
@@ -111,22 +115,23 @@ export default class App extends React.Component {
       });
   };
 
-
-  _onClickAdicionar = () => {
-    this.adicionaItemParse(this.state.nomeItem, this.state.arquivoBase64);
-    this.setState({nomeItem: "", arquivoBase64: undefined});
+  // CLICKS /////////////
+  _onClickAdd = () => {
+    this.addItemParse(this.state.itemName, this.state.fileBase64);
+    //limpa state
+    this.setState({itemName: "", fileBase64: undefined});
   };
 
-  _onClickDeletar = (item) => {
-    this.deletaItemParse(item);
+  _onClickDelete = (item) => {
+    this.deleteItemParse(item);
   };
 
-  _onClickPickDocument = async () => {
-    let documentPicked = await DocumentPicker.getDocumentAsync();
-    if (documentPicked.type === "success") {
-      console.log("User selected the file in " + documentPicked.uri);
-      this.criaArquivoLocal(documentPicked);
-    } else if (documentPicked.type === "failed") {
+  _onClickPickFile = async () => {
+    let filePicked = await DocumentPicker.getDocumentAsync();
+    if (filePicked.type === "success") {
+      console.log("User selected the file in " + filePicked.uri);
+      this.addFileBase64ToState(filePicked);
+    } else if (filePicked.type === "failed") {
       console.log("User cancelled the file picking");
     }
   };
@@ -135,38 +140,39 @@ export default class App extends React.Component {
   render() {
     return (
       <View style={styles.container}>
+
         <View style={styles.inputContainer}>
 
           <TouchableOpacity
-            onPress={this._onClickPickDocument}
+            onPress={this._onClickPickFile}
             style={styles.btContainer}>
 
             <MaterialIcons
               name={'image'}
               size={35}
-              color={this.state.arquivoBase64 ? '#367ec1' : '#dddddd'}/>
+              color={this.state.fileBase64 ? '#367ec1' : '#dddddd'}/>
 
           </TouchableOpacity>
 
           <TextInput
             style={styles.textInputStyle}
-            onChangeText={(text) => this.setState({nomeItem: text})}
-            placeholder='Título do novo item'
-            value={this.state.nomeItem}/>
+            onChangeText={(text) => this.setState({itemName: text})}
+            placeholder='Insert new item'
+            value={this.state.itemName}/>
 
           <Button
-            title="Adicionar"
-            onPress={this._onClickAdicionar}/>
+            title="Add"
+            onPress={this._onClickAdd}/>
         </View>
 
-        <Text style={styles.textoItem}>
-          {this.state.itens.length} itens
+        <Text style={styles.textItem}>
+          {this.state.itens.length} items
         </Text>
 
         <FlatList
           data={this.state.itens}
           extraData={this.state}
-          renderItem={({item}) => <ListElement item={item} deletaItem={this._onClickDeletar}/>}
+          renderItem={({item}) => <ListElement item={item} deleteItem={this._onClickDelete}/>}
           keyExtractor={(item) => (item.id)}/>
       </View>
     );
@@ -177,12 +183,12 @@ const ListElement = props => (
   <View style={styles.itemContainer}>
 
     <Image
-      style={styles.imagemItem}
+      style={styles.imageItem}
       source={{uri: props.item.get("arquivo").url()}}/>
 
     <Text style={{flex: 1}}>{props.item.get("nome")}</Text>
 
-    <TouchableOpacity onPress={() => props.deletaItem(props.item)}>
+    <TouchableOpacity onPress={() => props.deleteItem(props.item)}>
 
       <MaterialIcons
         name={'delete'}
@@ -234,11 +240,11 @@ const styles = StyleSheet.create({
     borderBottomColor: '#ddd',
   },
 
-  textoItem: {
+  textItem: {
     alignSelf: "center"
   },
 
-  imagemItem: {
+  imageItem: {
     marginRight: 10,
     width: 35,
     height: 40
