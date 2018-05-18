@@ -11,8 +11,6 @@ export default class App extends React.Component {
     super(props);
     this.state = {
       items: [],
-      itemName: "",
-      itemFile: undefined
     };
 
     this.dados = new ParseRD(this);
